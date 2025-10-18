@@ -1,5 +1,5 @@
 % Algoritmo RRT con un primer obstaculos (simulacion de laberinto con obstaculos)
-% Martin Luna Rogel
+% Martin Luna Rogel%
 %
 % Descripción:
 %   Algoritmo RRT (Rapidly-exploring Random Tree).
@@ -20,6 +20,7 @@
 %       • Obstaculo (barra al cento de la grafica)
 clc; clear; close all;
 pkg load statistics;
+pkg load geometry;
 
 % =========================================================================
 %  === PARAMETROS DEL ESPACIO Y DEL ALGORITMO ===
@@ -50,33 +51,11 @@ run('Obstaculos_Para_RRT.m');
 
 
 % =========================================================================
-% === CÁLCULO VECTORIZADO DEL MÍNIMO ANCHO GLOBAL ===
+% === AJUSTE DE LA DISTANCIA DE MUESTREO PARA POLÍGONOS ===
 % =========================================================================
-
-min_anchos = []; % Arreglo para guardar la dimensión más estrecha de cada obstáculo
-
-% Iterar sobre cada obstáculo en el cell array
-for i = 1:size(obstaculos, 1)
-    x_lim = obstaculos{i, 1}; % Límites X: [X_min, X_max]
-    y_lim = obstaculos{i, 2}; % Límites Y: [Y_min, Y_max]
-
-    ancho_x = x_lim(2) - x_lim(1); % Dimensión en X
-    alto_y = y_lim(2) - y_lim(1);  % Dimensión en Y
-
-    % Encontrar la dimensión más estrecha de este obstáculo (min(ancho, alto))
-    min_obs_i = min([ancho_x, alto_y]);
-
-    % Agregar el valor al arreglo
-    min_anchos = [min_anchos, min_obs_i];
-end
-
-% Encontrar el MÍNIMO GLOBAL y establecer la distancia de muestreo
-min_ancho_global = min(min_anchos);
-distancia_muestreo = min_ancho_global / 3; % Factor de seguridad (3)
-
-if distancia_muestreo <= 0
-    distancia_muestreo = 0.1;
-end
+% Se establece un valor fijo bajo para garantizar la detección de colisiones
+% en pasajes estrechos con obstáculos poligonales.
+distancia_muestreo = 0.2; % Define una distancia de muestreo baja (0.5 unidades) para la verificación de colisión
 
 
 % =========================================================================
@@ -109,14 +88,11 @@ ylabel('Y');    % Etiqueta el eje Y.
 % Se itera sobre el cell array 'obstaculos' para dibujar cada figura
 for i = 1:size(obstaculos, 1)
 
-    % Extraer los límites del obstáculo actual (obs_i)
-    x_lim = obstaculos{i, 1}; % [X_min, X_max]
-    y_lim = obstaculos{i, 2}; % [Y_min, Y_max]
+    % Extraer los vértices del obstáculo actual (obs_i)
+    vertices = obstaculos{i, 1};    % Esta línea parece correcta
 
     % Dibujar el obstáculo usando los límites extraídos
-    fill([x_lim(1), x_lim(2), x_lim(2), x_lim(1)], ... % Coordenadas X: (min, max, max, min)
-         [y_lim(1), y_lim(1), y_lim(2), y_lim(2)], ... % Coordenadas Y: (min, min, max, max)
-         'k', 'FaceAlpha', 0.3);                       % 'FaceAlpha' es la transparencia del relleno. 0.3 lo hace semitransparente
+    patch(vertices(:,1), vertices(:,2), 'k', 'FaceAlpha', 0.3, 'EdgeColor', 'k'); % ¡CORRECCIÓN CRÍTICA! Se añade el punto y coma final para cerrar la instrucción
 end
 
 
