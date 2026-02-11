@@ -1,0 +1,11 @@
+=== REPORTE DE CALIDAD RRT* V18 ===
+Ruta de guardado: C:\Users\MartinLuna\Documents\UAQ\ServicioSocial\AlgoritmoRRT\Algoritmo_RRT_V19\..\Resultados_Metricas\Metricas_V18_004521.txt
+-----------------------------------
+Tiempo Búsqueda Inicial: 1.6665 s
+Nodos totales en los dos árboles (al conectar): 124 nodos
+Tiempo Optimización: 1.4279 s
+Nodos en el camino final optimizado: 8 nodos
+Longitud de Ruta (Costo): 116.66 unidades
+Iteraciones ejecutadas: 237
+Colisiones Detectadas: 115
+Eficiencia de Muestreo: 51.48%
