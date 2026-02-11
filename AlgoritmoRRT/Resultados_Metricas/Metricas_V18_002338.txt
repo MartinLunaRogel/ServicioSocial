@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V18 ===
+Ruta de guardado: C:\Users\MartinLuna\Documents\UAQ\ServicioSocial\AlgoritmoRRT\Algoritmo_RRT_V18\..\Resultados_Metricas\Metricas_V18_002338.txt
+-----------------------------------
+Tiempo Búsqueda Inicial: 1.9340 s
+Tiempo Optimización: 1.8947 s
+Longitud de Ruta (Costo): 107.90 unidades
+Iteraciones ejecutadas: 341
+Colisiones Detectadas: 209
+Eficiencia de Muestreo: 38.71%
