@@ -1,5 +1,5 @@
-% Algoritmo RRT Bidireccional
-% Martin Luna Rogel
+% Algoritmo RRT con un primer obstaculos
+% Martin Luna Rogel%
 %
 % Descripción:
 %   Algoritmo RRT Bidireccional (Rapidly-exploring Random Tree).
