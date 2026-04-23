@@ -1,0 +1,8 @@
+=== REPORTE DE CALIDAD RRT* V21 ===
+Tiempo Búsqueda Inicial: 5.9267 s
+Nodos totales en árboles: 289
+Tiempo Optimización: 0.0775 s
+Nodos en camino final: 21
+Costo Final de Ruta: 269.27
+Iteraciones: 683 | Colisiones: 406
+Eficiencia de Muestreo: 40.56%
