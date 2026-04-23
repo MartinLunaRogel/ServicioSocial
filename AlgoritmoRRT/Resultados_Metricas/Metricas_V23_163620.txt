@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V23 ===
+Tiempo Búsqueda Inicial: 6.3975 s
+Nodos totales en árboles: 373
+Tiempo Optimización: 0.6992 s
+Nodos en camino final: 8
+Costo Inicial de Ruta: 1188.24
+Costo Final de Ruta: 834.44
+Iteraciones: 695 | Colisiones: 334
+Eficiencia de Muestreo: 51.94%
