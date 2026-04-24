@@ -45,32 +45,41 @@ run('Mapa_Obstaculos_RRT.m');
 
 
 % =========================================================================
-% === INICIALIZACIÓN DEL BOSQUE (RRT* MULTI-ÁRBOL) ===
+% === INICIALIZACIÓN DEL BOSQUE (MALLA ESTRATÉGICA) ===
 % =========================================================================
 
-num_arboles = 12; % 1 Inicio + 1 Objetivo + 10 Semillas
+disp('Generando malla estratégica de semillas en las calles...');
 
-% 1. Generar 10 puntos seguros usando nuestra nueva función
-disp('Generando semillas seguras para el bosque...');
-semillas = Generar_Semillas_Libres(10, x_limites, y_limites, obstaculos);
+% Definimos cada cuántos píxeles/unidades queremos un punto de la malla
+% (60 es un excelente balance para tu mapa de 500x500)
+distancia_malla = 60;
 
-% 2. Consolidar todos los puntos base (raíces de los árboles)
-% Índice 1: Inicio | Índice 2: Objetivo | Índices 3 al 12: Semillas
+% Generamos la cuadrícula de semillas
+semillas = Generar_Semillas_Malla(x_limites, y_limites, obstaculos, distancia_malla);
+
+% Calculamos automáticamente cuántos árboles necesitamos en total
+num_semillas = size(semillas, 1);
+num_arboles = 2 + num_semillas; % 1 Inicio + 1 Objetivo + Total de Semillas sobrevivientes
+
+disp(['> Se plantaron ', num2str(num_semillas), ' semillas en las calles libres.']);
+disp(['> Iniciando bosque con ', num2str(num_arboles), ' árboles simultáneos.']);
+
+% Consolidar todos los puntos base (raíces de los árboles)
+% Índice 1: Inicio | Índice 2: Objetivo | Índices 3 al N: Semillas
 raices_bosque = [inicio; objetivo; semillas];
 
-% 3. Inicializar las estructuras de datos (Cell Arrays)
+% Inicializar las estructuras de datos (Cell Arrays)
 bosque_nodos = cell(num_arboles, 1);
 bosque_padres = cell(num_arboles, 1);
-bosque_mapas_densidad = cell(num_arboles, 1);
+mapa_densidad_global = zeros(num_celdas_y, num_celdas_x);
 
 for k = 1:num_arboles
-    bosque_nodos{k} = raices_bosque(k, :); % El primer nodo de cada árbol es su raíz
-    bosque_padres{k} = 0;                  % La raíz no tiene padre
-    bosque_mapas_densidad{k} = zeros(num_celdas_y, num_celdas_x);
+    bosque_nodos{k} = raices_bosque(k, :);
+    bosque_padres{k} = 0;
 
-    % Mapear densidad de la raíz inicial
+    % Actualizar la densidad en la matriz única
     [c_idx, r_idx] = Mapeo_Densidad_Grid(raices_bosque(k, :), x_limites, y_limites, grid_size);
-    bosque_mapas_densidad{k}(r_idx, c_idx) = 1;
+    mapa_densidad_global(r_idx, c_idx) = mapa_densidad_global(r_idx, c_idx) + 1;
 end
 
 % 4. Matriz de Adyacencia y Detalles de Conexión
@@ -126,7 +135,6 @@ for i = 1:max_iter
 
     current_nodes = bosque_nodos{tree_id};
     current_parent = bosque_padres{tree_id};
-    current_density_map = bosque_mapas_densidad{tree_id};
 
     % Para el muestreo, haremos que todos los árboles tengan un ligero bias
     % hacia el objetivo final (índice 2) para "jalarlos" hacia la meta.
@@ -135,7 +143,7 @@ for i = 1:max_iter
     % --------------------------------------------------------------------------
     % --- 2. Expansión del Árbol Actual ---
     % --------------------------------------------------------------------------
-    rand_point = Generar_Punto_Aleatorio(nodo_meta_bias, current_density_map, x_limites, y_limites, grid_size, prob_objetivo, prob_bias);
+    rand_point = Generar_Punto_Aleatorio(nodo_meta_bias, mapa_densidad_global, x_limites, y_limites, grid_size, prob_objetivo, prob_bias);
 
     dif = current_nodes - rand_point;
     distancias = sqrt(sum(dif.^2, 2));
@@ -153,14 +161,13 @@ for i = 1:max_iter
         current_parent(end+1) = idx;
         new_node_idx = size(current_nodes, 1);
 
-        % Actualizar densidad
+        % Actualizar la densidad en la MATRIZ GLOBAL
         [c_idx, r_idx] = Mapeo_Densidad_Grid(new_node, x_limites, y_limites, grid_size);
-        current_density_map(r_idx, c_idx) = current_density_map(r_idx, c_idx) + 1;
+        mapa_densidad_global(r_idx, c_idx) = mapa_densidad_global(r_idx, c_idx) + 1;
 
         % Guardar cambios en el bosque
         bosque_nodos{tree_id} = current_nodes;
         bosque_padres{tree_id} = current_parent;
-        bosque_mapas_densidad{tree_id} = current_density_map;
 
         % Dibujar la rama (Azul para inicio, Cyan para objetivo, Verde para semillas)
         if tree_id == 1
@@ -171,7 +178,11 @@ for i = 1:max_iter
             color_rama = 'g';
         end
         plot([nearest_node(1), new_node(1)], [nearest_node(2), new_node(2)], color_rama);
-        drawnow;
+
+        %% Dubujar solo cada 5 iteraciones (para acelerar el programa)
+        if mod(i, 5) == 0
+            drawnow;
+        end
 
 
         % --------------------------------------------------------------------------
@@ -188,10 +199,13 @@ for i = 1:max_iter
             distancias_other = sqrt(sum(dif_other.^2, 2));
             [min_dist, idx_nearest_other] = min(distancias_other);
 
-            % Si está lo suficientemente cerca...
+            % --- OPTIMIZACIÓN: Solo intentar conectar si están en el vecindario ---
+            % Esto evita llamar a la función pesada de colisiones para nodos lejanos
             if min_dist < tolerancia
-                % Y si no hay pared entre ellos...
-                if ~Verificar_Colision_Segmento(new_node, other_nodes(idx_nearest_other, :), obstaculos, distancia_muestreo)
+                nodo_candidato = other_nodes(idx_nearest_other, :);
+
+                % Solo si están cerca, verificamos si hay una pared en medio
+                if ~Verificar_Colision_Segmento(new_node, nodo_candidato, obstaculos, distancia_muestreo)
 
                     % ¡SE DIERON LA MANO! (Registramos la conexión)
                     matriz_conexiones(tree_id, otro_id) = 1;
@@ -202,7 +216,11 @@ for i = 1:max_iter
                     detalles_conexiones{otro_id, tree_id} = [idx_nearest_other, new_node_idx];
 
                     plot([new_node(1), other_nodes(idx_nearest_other, 1)], [new_node(2), other_nodes(idx_nearest_other, 2)], 'm', 'LineWidth', 1);
-                    drawnow;
+
+                    %% Solamente dibujar cada 5 iteraciones para acelerar el programa
+                    if mod(i, 5) == 0
+                        drawnow;
+                    end
                     disp(['> Conexión formada entre el árbol ', num2str(tree_id), ' y el árbol ', num2str(otro_id)]);
 
                     % ------------------------------------------------------------------
