@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V25 ===
+Tiempo Búsqueda Inicial: 20.6526 s
+Nodos totales en árboles: 400
+Tiempo Optimización: 0.6934 s
+Nodos en camino final: 5
+Costo Inicial de Ruta: 473.86
+Costo Final de Ruta: 437.99
+Iteraciones: 1805 | Colisiones: 1427
+Eficiencia de Muestreo: 20.94%
