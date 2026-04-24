@@ -17,13 +17,13 @@ function Exportar_Reporte_Metricas(path_final, t_busqueda, t_optimizacion, n_tot
         mkdir(nombre_carpeta);
     end
 
-    nombre_archivo = ['Metricas_V24_', datestr(now, 'HHMMSS'), '.txt'];
+    nombre_archivo = ['Metricas_V25_', datestr(now, 'HHMMSS'), '.txt'];
     ruta_destino = fullfile(nombre_carpeta, nombre_archivo);
 
     % 3. Escribir el archivo.
     fid = fopen(ruta_destino, 'w');
     if fid ~= -1
-        fprintf(fid, '=== REPORTE DE CALIDAD RRT* V24 ===\n');
+        fprintf(fid, '=== REPORTE DE CALIDAD RRT* V25 ===\n');
         fprintf(fid, 'Tiempo Búsqueda Inicial: %.4f s\n', t_busqueda);
         fprintf(fid, 'Nodos totales en árboles: %d\n', n_total_arboles);
         fprintf(fid, 'Tiempo Optimización: %.4f s\n', t_optimizacion);

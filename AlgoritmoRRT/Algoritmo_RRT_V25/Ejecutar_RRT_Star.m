@@ -18,7 +18,6 @@
 %       • Expansión del árbol (líneas azules).
 %       • Camino final encontrado (línea roja ).
 %       • Obstaculo (barra al cento de la grafica)
-clc; clear; close all;
 pkg load statistics;
 pkg load geometry;
 
@@ -27,8 +26,8 @@ pkg load geometry;
 % =========================================================================
 x_limites = [0, 500];   % Define la anchura del espacio de trabajo, de 0 a 100 en el eje X.
 y_limites = [0, 500];   % Define la altura del espacio de trabajo, de 0 a 100 en el eje Y.
-inicio = [50, 50];      % Es el punto de partida del algoritmo.
-objetivo = [450, 450];    % Es el punto al que el algoritmo debe llegar.
+inicio = [50, 50];
+objetivo = [450, 450];
 tolerancia = 25;         % Distancia máxima al objetivo para considerar que se ha alcanzado. (Ahora se usa como radio de conexión)
 max_iter = 17000;        % Número máximo de intentos para encontrar un camino.
 step_size = 12;        % La longitud de cada paso del algoritmo.
