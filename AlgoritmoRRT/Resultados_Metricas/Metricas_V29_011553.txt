@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V29 ===
+Tiempo Búsqueda Inicial: 27.4818 s
+Nodos totales en árboles: 407
+Tiempo Optimización: 7.6734 s
+Nodos en camino final: 9
+Costo Inicial de Ruta: 590.86
+Costo Final de Ruta: 549.11
+Iteraciones: 1045 | Colisiones: 660
+Eficiencia de Muestreo: 36.84%
