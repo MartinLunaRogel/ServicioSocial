@@ -34,7 +34,7 @@ objetivo = punto_final;
 x_limites = [0, 500];   % Define la anchura del espacio de trabajo, de 0 a 100 en el eje X.
 y_limites = [0, 500];   % Define la altura del espacio de trabajo, de 0 a 100 en el eje Y.
 tolerancia = 25;         % Distancia máxima al objetivo para considerar que se ha alcanzado. (Ahora se usa como radio de conexión)
-max_iter = 10000;        % Número máximo de intentos para encontrar un camino.
+max_iter = 15000;        % Número máximo de intentos para encontrar un camino.
 step_size = 24;        % La longitud de cada paso del algoritmo.
 prob_objetivo = 0.10;    % Probabilidad de muestrear el punto objetivo (5%)
 grid_size = 25;         % Tamaño de la celda de la cuadricula (10x10 unidades)
@@ -101,6 +101,7 @@ ruta_arboles = []; % Guardará la secuencia de árboles (ej. [1, 5, 8, 2])
 % --- VARIABLES PARA EL PERIODO DE GRACIA ---
 mejor_costo = inf;
 path_coords_inicial = [];
+h_mejor_ruta = []; % Guardará la referencia a la línea roja
 iteraciones_extra = 0;
 
 
@@ -271,13 +272,23 @@ for i = 1:max_iter
                                 path_coords_inicial = coords_temp;
                                 ruta_arboles = ruta_temp;
 
+                                % === DIBUJO EN TIEMPO REAL ===
+                                % Si ya existía una línea roja vieja, la borramos
+                                if ~isempty(h_mejor_ruta)
+                                    delete(h_mejor_ruta);
+                                end
+
+                                % Dibujamos la nueva mejor ruta encontrada
+                                h_mejor_ruta = plot(path_coords_inicial(:,1), path_coords_inicial(:,2), ...
+                                                   'r-', 'LineWidth', 2);
+
                                 if ~is_connected
                                     disp(['¡Primera ruta encontrada! Costo: ', num2str(mejor_costo)]);
-                                    disp('Iniciando periodo de gracia para buscar atajos...');
                                     is_connected = true;
                                 else
                                     disp(['¡Atajo encontrado! Nuevo costo: ', num2str(mejor_costo)]);
                                 end
+                                drawnow;
                             end
                         end
                     end
@@ -292,7 +303,7 @@ for i = 1:max_iter
     % PERIODO DE GRACIA ---
     if is_connected
         iteraciones_extra = iteraciones_extra + 1;
-        if iteraciones_extra > 300
+        if iteraciones_extra > 370
             disp('¡Búsqueda RRT* optimizada finalizada!');
             break;
         end
@@ -302,11 +313,10 @@ end
 % >>> FIN DEL CONTEO DE TIEMPO PARA LA BÚSQUEDA INICIAL <<<
 tiempo_busqueda_inicial = toc;
 
-
 if is_connected
-    disp('Extrayendo la mejor ruta inicial...');
+    disp('Extrayendo la mejor ruta...');
 
-    % Ya calculamos path_coords_inicial y mejor_costo dentro del ciclo
+    % Ya calculamos el costo dentro del ciclo, solo lo guardamos
     costo_inicial = mejor_costo;
 
     % Contamos los nodos globales generados
@@ -316,30 +326,19 @@ if is_connected
     end
 
     % ----------------------------------------------------------------------
-    % === 2. DIBUJAR CAMINO INICIAL COMPLETO ===
-    % ----------------------------------------------------------------------
-    Limpiar_Dibujos_RRT('union');
-
-    % Dibujamos la ruta inicial en rojo continuo (ancho 2)
-    plot(path_coords_inicial(:,1), path_coords_inicial(:,2), 'r-', 'LineWidth', 2);
-    plot(path_coords_inicial(:,1), path_coords_inicial(:,2), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'black');
-    drawnow;
-
-    % --- CALCULAR COSTO DE LA RUTA INICIAL ---
-    costo_inicial = 0;
-    for k = 1:size(path_coords_inicial, 1) - 1
-        costo_inicial = costo_inicial + norm(path_coords_inicial(k+1, :) - path_coords_inicial(k, :));
-    end
-
-    % ----------------------------------------------------------------------
     % === FASE DE OPTIMIZACIÓN RRT* (POST-PROCESAMIENTO SHORTCUTTING) ===
     % ----------------------------------------------------------------------
     disp('Iniciando optimización de caminos (Suavizado por atajos)...');
+
+    % Borramos la línea roja que se estaba moviendo "en vivo" para no empalmar
+    if ~isempty(h_mejor_ruta)
+        delete(h_mejor_ruta);
+    end
+    Limpiar_Dibujos_RRT('union');
+
     tic;
-
-    % Le pasamos directamente las coordenadas iniciales, sin complicaciones
+    % Le pasamos las coordenadas de la mejor ruta que encontró el periodo de gracia
     path_final_coords_completo = Optimizar_Ruta_Final(path_coords_inicial, mapa_discreto, @Verificar_Colision_Segmento);
-
     tiempo_optimizacion = toc;
 
     % ----------------------------------------------------------------------
@@ -347,7 +346,7 @@ if is_connected
     % ----------------------------------------------------------------------
     Limpiar_Dibujos_RRT('fase_optimizacion');
 
-    % Dibujar ruta final óptima (línea roja gruesa)
+    % Dibujar ruta final óptima (línea roja gruesa y final)
     plot(path_final_coords_completo(:,1), path_final_coords_completo(:,2), 'r-', 'LineWidth', 2.5);
     plot(path_final_coords_completo(:,1), path_final_coords_completo(:,2), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'black');
     drawnow;

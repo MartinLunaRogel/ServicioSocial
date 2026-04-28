@@ -9,7 +9,7 @@ function Interfaz_RRT()
     mapa_listo = false;
 
     % 1. Crear la ventana principal
-    fig = figure('Name', 'Navegador RRT* - Centro Histórico QRO', ...
+    fig = figure('Name', 'Navegador RRT*, ...
                  'Position', [100 100 800 600], ...
                  'MenuBar', 'none', ...
                  'NumberTitle', 'off');
@@ -92,13 +92,32 @@ function Interfaz_RRT()
         set(ax, 'XLim', [0 500], 'YLim', [0 500]);
         axis(ax, 'equal'); grid(ax, 'on');
 
-        % 3. Pedir y registrar el nuevo Inicio
+        % 3. Pedir el nuevo Inicio
         title(ax, 'Haz clic en el mapa para el INICIO');
         axes(ax);
         [ix, iy] = ginput(1);
-        punto_inicio = [ix, iy];
 
-        % 4. Dibujar el nuevo Inicio
+        % =========================================================
+        % --- NUEVO: VALIDACIÓN DE COLISIÓN DEL MOUSE ---
+        dentro_de_obstaculo = false;
+        for k = 1:size(obstaculos, 1)
+            poligono = obstaculos{k, 1};
+            % inpolygon revisa si el clic cayó dentro del bloque gris
+            if inpolygon(ix, iy, poligono(:,1), poligono(:,2))
+                dentro_de_obstaculo = true;
+                break;
+            end
+        end
+
+        if dentro_de_obstaculo
+            errordlg('El punto está dentro de un area indevida. Por favor, selecciona una calle libre.', 'Punto Inválido');
+            title(ax, 'Error: Selecciona el inicio en una calle.');
+            return; % Cancelamos la acción y no guardamos el punto
+        end
+        % =========================================================
+
+        % 4. Registrar y dibujar el nuevo Inicio válido
+        punto_inicio = [ix, iy];
         plot(ax, ix, iy, 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
         title(ax, 'Inicio fijado. Selecciona el Objetivo.');
     end
@@ -127,13 +146,31 @@ function Interfaz_RRT()
         set(ax, 'XLim', [0 500], 'YLim', [0 500]);
         axis(ax, 'equal'); grid(ax, 'on');
 
-        % 4. Pedir y registrar el nuevo Objetivo
+        % 4. Pedir el nuevo Objetivo
         title(ax, 'Haz clic en el mapa para el OBJETIVO');
         axes(ax);
         [ox, oy] = ginput(1);
-        punto_final = [ox, oy];
 
-        % 5. Dibujar el nuevo Objetivo
+        % =========================================================
+        % --- NUEVO: VALIDACIÓN DE COLISIÓN DEL MOUSE ---
+        dentro_de_obstaculo = false;
+        for k = 1:size(obstaculos, 1)
+            poligono = obstaculos{k, 1};
+            if inpolygon(ox, oy, poligono(:,1), poligono(:,2))
+                dentro_de_obstaculo = true;
+                break;
+            end
+        end
+
+        if dentro_de_obstaculo
+            errordlg('El objetivo está dentro de un area indevida. Por favor, selecciona una calle libre.', 'Punto Inválido');
+            title(ax, 'Error: Selecciona la meta en una calle.');
+            return; % Cancelamos la acción y no guardamos el punto
+        end
+        % =========================================================
+
+        % 5. Registrar y dibujar el nuevo Objetivo válido
+        punto_final = [ox, oy];
         plot(ax, ox, oy, 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
         title(ax, 'Objetivo fijado. Listo para buscar.');
     end
