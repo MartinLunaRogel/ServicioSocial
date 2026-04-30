@@ -1,0 +1,329 @@
+
+% Algoritmo RRT con un primer obstaculos
+% Martin Luna Rogel%
+%
+% Descripción:
+%   Algoritmo RRT Bidireccional (Rapidly-exploring Random Tree).
+%   El algoritmo genera dos árboles (uno desde inicio, otro desde objetivo) que crecen
+%   simultáneamente hasta encontrarse en un "nodo de unión", buscando un camino óptimo.
+%   Se añadioeron varios obstaculos cuadrados por todo el area, para que trate de rodearlos y encontrar el punto final
+%
+% Entradas:
+%   - Ninguna.
+%
+% Salidas:
+%   - Visualización grafica:
+%       • Punto inicial (verde).
+%       • Punto final (rojo).
+%       • Expansión del árbol (líneas azules).
+%       • Camino final encontrado (línea roja ).
+%       • Obstaculo (barra al cento de la grafica)
+pkg load statistics;
+pkg load geometry;
+
+% Al inicio de Ejecutar_RRT_Star.m
+% Al inicio de Ejecutar_RRT_Star.m
+global obstaculos punto_inicio punto_final mapa_esqueleto coordenadas_esqueleto mapa_discreto semillas;
+
+% Usamos los puntos del mouse
+inicio = punto_inicio;
+objetivo = punto_final;
+
+
+% =========================================================================
+%  === PARAMETROS DEL ESPACIO Y DEL ALGORITMO ===
+% =========================================================================
+x_limites = [0, 500];   % Define la anchura del espacio de trabajo, de 0 a 100 en el eje X.
+y_limites = [0, 500];   % Define la altura del espacio de trabajo, de 0 a 100 en el eje Y.
+tolerancia = 25;         % Distancia máxima al objetivo para considerar que se ha alcanzado. (Ahora se usa como radio de conexión)
+max_iter = 15000;        % Número máximo de intentos para encontrar un camino.
+step_size = 24;        % La longitud de cada paso del algoritmo.
+
+
+% =========================================================================
+% === INICIALIZACIÓN DEL BOSQUE Y CARGA DE MAPAS DIGITALES ===
+% =========================================================================
+
+% Calculamos automáticamente cuántos árboles necesitamos en total
+num_semillas = size(semillas, 1);
+num_arboles = 2 + num_semillas; % 1 Inicio + 1 Objetivo + Total de Semillas sobrevivientes
+
+disp(['> Se plantaron ', num2str(num_semillas), ' semillas en las calles libres.']);
+disp(['> Iniciando bosque con ', num2str(num_arboles), ' árboles simultáneos.']);
+
+% Consolidar todos los puntos base (raíces de los árboles)
+% Índice 1: Inicio | Índice 2: Objetivo | Índices 3 al N: Semillas
+raices_bosque = [inicio; objetivo; semillas];
+
+% Inicializar las estructuras de datos (Cell Arrays)
+bosque_nodos = cell(num_arboles, 1);
+bosque_padres = cell(num_arboles, 1);
+
+for k = 1:num_arboles
+    bosque_nodos{k} = raices_bosque(k, :);
+    bosque_padres{k} = 0;
+end
+
+% 4. Matriz de Adyacencia y Detalles de Conexión
+% matriz_conexiones(i, j) será 1 si el árbol 'i' se conectó con el árbol 'j'
+matriz_conexiones = zeros(num_arboles, num_arboles);
+
+% detalles_conexiones{i, j} guardará [idx_en_arbol_i, idx_en_arbol_j] para saber por qué nodos se unieron
+detalles_conexiones = cell(num_arboles, num_arboles);
+
+% Variables de estado de la búsqueda
+is_connected = false;
+
+% --- VARIABLES PARA EL PERIODO DE GRACIA ---
+mejor_costo = inf;
+path_coords_inicial = [];
+h_mejor_ruta = []; % Guardará la referencia a la línea roja
+iteraciones_extra = 0;
+
+
+% --- NUEVAS VARIABLES PARA EXPORTAR MÉTRICAS ---
+nodos_colisionados = 0;     % Contador de intentos que chocaron con obstáculos.
+iteraciones_totales = 0;    % Registra cuántas iteraciones se ejecutaron realmente.
+% (Asegúrate de que is_connected esté declarada aquí también)
+
+
+% =========================================================================
+%  === DIBUJAR EN EL ESPACIO DE TRABAJO (MODULARIZADO) ===
+% =========================================================================
+
+% --- Dibujar las semillas en el mapa ---
+plot(semillas(:,1), semillas(:,2), 'ko', 'MarkerFaceColor', 'y', 'MarkerSize', 6);
+
+
+% =========================================================================
+%  === ALGORITMO RRT BOSQUE ===
+% =========================================================================
+
+% >>> INICIO DEL CONTEO DE TIEMPO PARA LA FASE DE BÚSQUEDA INICIAL <<<
+tic;
+
+for i = 1:max_iter
+    iteraciones_totales = i;
+
+    % --------------------------------------------------------------------------
+    % --- 1. Lógica de Turnos (Round-Robin para 12 árboles) ---
+    % --------------------------------------------------------------------------
+    % mod(i-1, num_arboles) + 1 nos da una secuencia repetitiva: 1, 2, 3... 12, 1, 2...
+    tree_id = mod(i-1, num_arboles) + 1;
+
+    % Si el árbol es una semilla (id > 2) y ya formó un puente (2 o más conexiones),
+    % ha cumplido su propósito. Nos saltamos su turno para ahorrar recursos.
+    if tree_id > 2 && sum(matriz_conexiones(tree_id, :)) >= 2
+        continue;
+    end
+
+    current_nodes = bosque_nodos{tree_id};
+    current_parent = bosque_padres{tree_id};
+
+    % Para el muestreo, haremos que todos los árboles tengan un ligero bias
+    % hacia el objetivo final (índice 2) para "jalarlos" hacia la meta.
+    nodo_meta_bias = raices_bosque(2, :);
+
+    % --------------------------------------------------------------------------
+    % --- 2. Expansión del Árbol Actual ---
+    % --------------------------------------------------------------------------
+    rand_point = Generar_Punto_Aleatorio(nodo_meta_bias, current_nodes, x_limites, y_limites, coordenadas_esqueleto, mapa_discreto);
+
+    dif = current_nodes - rand_point;
+    distancias_sq = sum(dif.^2, 2);
+    [~, idx] = min(distancias_sq);
+    nearest_node = current_nodes(idx, :);
+
+    direction = (rand_point - nearest_node);
+    direction = direction / norm(direction);
+
+    %Paso dinámico (Retracción en caso de choque)
+    paso_actual = step_size;
+    nodo_valido = false;
+
+    while paso_actual >= 3 % Límite mínimo para no crear nodos inútilmente pegados
+
+      new_node = nearest_node + paso_actual * direction;
+
+      if ~Verificar_Colision_Segmento(nearest_node, new_node, mapa_discreto)
+        nodo_valido = true;
+        break; % Encontramos un paso libre, salimos del while
+      else
+        paso_actual = paso_actual / 2; % Chocó. Reducimos el paso a la mitad y reintentamos.
+      end
+    end
+
+    if nodo_valido
+        % Añadir el nodo al árbol actual
+        current_nodes = [current_nodes; new_node];
+        current_parent(end+1) = idx;
+        new_node_idx = size(current_nodes, 1);
+
+        % Guardar cambios en el bosque
+        bosque_nodos{tree_id} = current_nodes;
+        bosque_padres{tree_id} = current_parent;
+
+        % Dibujar la rama (Azul para inicio, Cyan para objetivo, Verde para semillas)
+        if tree_id == 1
+            color_rama = 'b';
+        elseif tree_id == 2
+            color_rama = 'c';
+        else
+            color_rama = 'g';
+        end
+        plot([nearest_node(1), new_node(1)], [nearest_node(2), new_node(2)], color_rama);
+
+        %% Dubujar solo cada 5 iteraciones (para acelerar el programa)
+        if mod(i, 300) == 0
+            pause(0.001);
+        end
+
+
+        % --------------------------------------------------------------------------
+        % --- 3. INTENTO DE CONEXIÓN CON EL RESTO DEL BOSQUE ---
+        % --------------------------------------------------------------------------
+        for otro_id = 1:num_arboles
+            % No conectarse a sí mismo, ni a árboles con los que YA está conectado
+            if otro_id == tree_id || matriz_conexiones(tree_id, otro_id) == 1
+                continue;
+            end
+
+            other_nodes = bosque_nodos{otro_id};
+            dif_other = other_nodes - new_node;
+            distancias_other_sq = sum(dif_other.^2, 2);
+            [min_dist_sq, idx_nearest_other] = min(distancias_other_sq);
+
+            % --- OPTIMIZACIÓN: Solo intentar conectar si están en el vecindario ---
+            % Esto evita llamar a la función pesada de colisiones para nodos lejanos
+            if min_dist_sq < (tolerancia^2)
+                nodo_candidato = other_nodes(idx_nearest_other, :);
+
+                % Solo si están cerca, verificamos si hay una pared en medio
+                if ~Verificar_Colision_Segmento(new_node, nodo_candidato, mapa_discreto)
+
+                    % ¡SE DIERON LA MANO! (Registramos la conexión)
+                    matriz_conexiones(tree_id, otro_id) = 1;
+                    matriz_conexiones(otro_id, tree_id) = 1;
+
+                    % Guardamos EXACTAMENTE qué nodos se unieron
+                    detalles_conexiones{tree_id, otro_id} = [new_node_idx, idx_nearest_other];
+                    detalles_conexiones{otro_id, tree_id} = [idx_nearest_other, new_node_idx];
+
+                    plot([new_node(1), other_nodes(idx_nearest_other, 1)], [new_node(2), other_nodes(idx_nearest_other, 2)], 'm', 'LineWidth', 1);
+
+                    %% Solamente dibujar cada 5 iteraciones para acelerar el programa
+                    if mod(i, 300) == 0
+                        pause(0.001);
+                    end
+                    disp(['> Conexión formada entre el árbol ', num2str(tree_id), ' y el árbol ', num2str(otro_id)]);
+
+                    % ------------------------------------------------------------------
+                    % --- 4. VERIFICAR SI LA RED YA CONECTÓ EL INICIO (1) Y OBJETIVO (2)
+                    % ------------------------------------------------------------------
+                    if sum(matriz_conexiones(1,:)) > 0 && sum(matriz_conexiones(2,:)) > 0
+                        ruta_temp = BFS_Encontrar_Ruta(matriz_conexiones, 1, 2);
+
+                        if ~isempty(ruta_temp)
+                            % Unificamos temporalmente para medir la distancia real
+                            [~, ~, coords_temp, ~] = Unificar_Bosque_RRT(bosque_nodos, bosque_padres, detalles_conexiones, num_arboles);
+
+                            % Calcular costo físico real de esta ruta
+                            costo_actual = 0;
+                            for c = 1:(size(coords_temp, 1) - 1)
+                                costo_actual = costo_actual + norm(coords_temp(c+1, :) - coords_temp(c, :));
+                            end
+
+                            % Si encontramos una ruta físicamente más corta, la guardamos
+                            if costo_actual < mejor_costo
+                                mejor_costo = costo_actual;
+                                path_coords_inicial = coords_temp;
+
+                                % === DIBUJO EN TIEMPO REAL ===
+                                % Si ya existía una línea roja vieja, la borramos
+                                if ~isempty(h_mejor_ruta)
+                                    delete(h_mejor_ruta);
+                                end
+
+                                % Dibujamos la nueva mejor ruta encontrada
+                                h_mejor_ruta = plot(path_coords_inicial(:,1), path_coords_inicial(:,2), ...
+                                                   'r-', 'LineWidth', 2);
+
+                                if ~is_connected
+                                    disp(['¡Primera ruta encontrada! Costo: ', num2str(mejor_costo)]);
+                                    is_connected = true;
+                                else
+                                    disp(['¡Atajo encontrado! Nuevo costo: ', num2str(mejor_costo)]);
+                                end
+                                drawnow;
+                            end
+                        end
+                    end
+                end
+            end
+        end % Fin for conexiones
+
+    else
+        nodos_colisionados = nodos_colisionados + 1;
+    end
+
+    % PERIODO DE GRACIA ---
+    if is_connected
+        iteraciones_extra = iteraciones_extra + 1;
+        if iteraciones_extra > 370
+            disp('¡Búsqueda RRT* optimizada finalizada!');
+            break;
+        end
+    end
+end
+
+% >>> FIN DEL CONTEO DE TIEMPO PARA LA BÚSQUEDA INICIAL <<<
+tiempo_busqueda_inicial = toc;
+
+if is_connected
+    disp('Extrayendo la mejor ruta...');
+
+    % Ya calculamos el costo dentro del ciclo, solo lo guardamos
+    costo_inicial = mejor_costo;
+
+    % Contamos los nodos globales generados
+    total_nodos_encontrados = 0;
+    for k = 1:num_arboles
+        total_nodos_encontrados = total_nodos_encontrados + size(bosque_nodos{k}, 1);
+    end
+
+    % ----------------------------------------------------------------------
+    % === FASE DE OPTIMIZACIÓN RRT* (POST-PROCESAMIENTO SHORTCUTTING) ===
+    % ----------------------------------------------------------------------
+    disp('Iniciando optimización de caminos (Suavizado por atajos)...');
+
+    % Borramos la línea roja que se estaba moviendo "en vivo" para no empalmar
+    if ~isempty(h_mejor_ruta)
+        delete(h_mejor_ruta);
+    end
+    Limpiar_Dibujos_RRT('union');
+
+    tic;
+    % Le pasamos las coordenadas de la mejor ruta que encontró el periodo de gracia
+    path_final_coords_completo = Optimizar_Ruta_Final(path_coords_inicial, mapa_discreto, @Verificar_Colision_Segmento);
+    tiempo_optimizacion = toc;
+
+    % ----------------------------------------------------------------------
+    % === DIBUJAR EL CAMINO FINAL OPTIMIZADO ===
+    % ----------------------------------------------------------------------
+    Limpiar_Dibujos_RRT('fase_optimizacion');
+
+    % Dibujar ruta final óptima (línea roja gruesa y final)
+    plot(path_final_coords_completo(:,1), path_final_coords_completo(:,2), 'r-', 'LineWidth', 2.5);
+    plot(path_final_coords_completo(:,1), path_final_coords_completo(:,2), 'ro', 'MarkerSize', 5, 'MarkerFaceColor', 'black');
+    drawnow;
+
+    nodos_camino_final = size(path_final_coords_completo, 1);
+    disp('Optimización finalizada. Camino más corto trazado.');
+
+    % ==================================================================
+    % === EXPORTACIÓN A CARPETA DE RESULTADOS ===
+    % ==================================================================
+    Exportar_Reporte_Metricas(path_final_coords_completo, tiempo_busqueda_inicial, tiempo_optimizacion, total_nodos_encontrados, nodos_camino_final, iteraciones_totales, nodos_colisionados, costo_inicial);
+else
+    disp('No se encontró conexión dentro del número máximo de iteraciones.');
+end

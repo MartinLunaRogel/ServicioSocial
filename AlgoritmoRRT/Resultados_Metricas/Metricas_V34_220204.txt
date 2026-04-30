@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V34 ===
+Tiempo Búsqueda Inicial: 10.7813 s
+Nodos totales en árboles: 882
+Tiempo Optimización: 0.0323 s
+Nodos en camino final: 2
+Costo Inicial de Ruta: 745.70
+Costo Final de Ruta: 439.52
+Iteraciones: 6485 | Colisiones: 970
+Eficiencia de Muestreo: 85.04%
