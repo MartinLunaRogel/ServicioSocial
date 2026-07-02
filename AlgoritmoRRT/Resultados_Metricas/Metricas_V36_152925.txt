@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V36 ===
+Tiempo Búsqueda Inicial: 7.5727 s
+Nodos totales en árboles: 845
+Tiempo Optimización: 0.1675 s
+Nodos en camino final: 3
+Costo Inicial de Ruta: 251.32
+Costo Final de Ruta: 240.28
+Iteraciones: 7753 | Colisiones: 1015
+Eficiencia de Muestreo: 86.91%
