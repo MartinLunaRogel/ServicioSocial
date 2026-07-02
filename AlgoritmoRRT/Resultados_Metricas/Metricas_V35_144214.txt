@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V35 ===
+Tiempo Búsqueda Inicial: 8.5476 s
+Nodos totales en árboles: 846
+Tiempo Optimización: 0.2000 s
+Nodos en camino final: 5
+Costo Inicial de Ruta: 449.95
+Costo Final de Ruta: 381.53
+Iteraciones: 11145 | Colisiones: 1149
+Eficiencia de Muestreo: 89.69%
