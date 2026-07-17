@@ -1,0 +1,5 @@
+=== REPORTE RRT BUSQUEDA BINARIA V5 ===
+Tiempo Busqueda: 82.9145 s
+Costo Ruta: 390.00
+Iteraciones: 365
+Colisiones: 304

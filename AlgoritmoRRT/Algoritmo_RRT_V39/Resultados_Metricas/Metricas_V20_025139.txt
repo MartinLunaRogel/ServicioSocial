@@ -1,0 +1,9 @@
+=== REPORTE DE CALIDAD RRT* V20 ===
+Tiempo Búsqueda Inicial: 2.8119 s
+Nodos totales en árboles: 33
+Tiempo Optimización: 0.7379 s
+Nodos en camino final: 5
+Costo Final de Ruta: 243.84
+Iteraciones: 185 | Colisiones: 154
+Eficiencia de Muestreo: 16.76%
+Mapa: Mapa3.osm
