@@ -1,0 +1,5 @@
+=== REPORTE RRT VORAZ V10 ===
+Tiempo Busqueda: 58.7918 s
+Costo Ruta: 180.00
+Iteraciones: 346
+Colisiones: 284

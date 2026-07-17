@@ -1,0 +1,8 @@
+=== REPORTE DE CALIDAD RRT* V15 ===
+Tiempo Búsqueda Inicial: 16.8492 s
+Nodos totales en árboles: 99
+Tiempo Optimización: 10.7675 s
+Nodos en camino final: 11
+Costo Final de Ruta: 565.11
+Iteraciones: 439 | Colisiones: 342
+Eficiencia de Muestreo: 22.10%
